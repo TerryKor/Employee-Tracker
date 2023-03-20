@@ -91,7 +91,12 @@ async function init() {
 
   db.query("SELECT * FROM role", function (err, results) {
     results.forEach((element) => {
-      allRoles.push({ value: element.id, name: element.title });
+      allRoles.push({
+        value: element.id,
+        name: element.title,
+        department_id: element.department_id,
+        salary: element.salary,
+      });
     });
   });
 
@@ -123,8 +128,31 @@ async function init() {
 }
 
 function viewAllEmployees() {
+  var employees = [];
   db.query("SELECT * from employee", (err, results) => {
-    console.table(results);
+    results.forEach((element) => {
+      var employeeRole = allRoles.filter(function (data) {
+        return data.value == element.role_id;
+      });
+      var employeeDepartment = allDepartments.filter(function (data) {
+        return data.value == employeeRole[0].department_id;
+      });
+      var employeeManager = results.filter(function (data) {
+        return data.id == element.manager_id;
+      });
+
+      element.title = employeeRole[0].name;
+      element.salary = employeeRole[0].salary;
+      element.department = employeeDepartment[0].name;
+      element.manager =
+      employeeManager[0] == undefined
+          ? null
+          : employeeManager[0].first_name + " " + employeeManager[0].last_name;
+          employees.push(element)
+          delete element.role_id;
+          delete element.manager_id;
+    });
+    console.table(employees);
   });
 }
 async function addEmployee() {
@@ -137,8 +165,17 @@ async function addEmployee() {
   );
 }
 function updateEmployeeRole() {}
+
 function viewAllRoles() {
   db.query("SELECT * from role", (err, results) => {
+    results.forEach((element)=>{
+
+      var roleDepartment = allDepartments.filter(function (data) {
+        return data.value == element.department_id;
+      });
+      element.department = roleDepartment[0].name
+      delete element.department_id
+    })
     console.table(results);
   });
 }
@@ -165,13 +202,7 @@ async function addDepartment() {
   );
 }
 
-function roleFromID(role_id) {
-  var results = "";
-  db.query(`SELECT * FROM role WHERE id='${role_id}'`, (err, result) => {
-    results = result[0].title;
-  });
-  return results;
-}
+
 
 app.use((req, res) => {
   res.status(404).end();
