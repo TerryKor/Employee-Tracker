@@ -22,6 +22,7 @@ const allManagers = [];
 const choicesArray = [
   "View all employees",
   "Add employee",
+  "Update Employee Role",
   "View all roles",
   "Add role",
   "View all departments",
@@ -83,51 +84,55 @@ const menuQuestions = [
 ];
 
 async function init() {
-  db.query("SELECT * FROM department", function (err, results) {
-    results.forEach((element) => {
-      allDepartments.push({ value: element.id, name: element.name });
-    });
-  });
-
-  db.query("SELECT * FROM role", function (err, results) {
-    results.forEach((element) => {
-      allRoles.push({
-        value: element.id,
-        name: element.title,
-        department_id: element.department_id,
-        salary: element.salary,
+  
+    db.query("SELECT * FROM department", function (err, results) {
+      results.forEach((element) => {
+        allDepartments.push({ value: element.id, name: element.name });
       });
     });
-  });
 
-  db.query("SELECT * FROM employee", (err, results) => {
-    results.forEach((element) => {
-      allManagers.push({
-        value: element.id,
-        name: element.first_name + " " + element.last_name,
+    db.query("SELECT * FROM role", function (err, results) {
+      results.forEach((element) => {
+        allRoles.push({
+          value: element.id,
+          name: element.title,
+          department_id: element.department_id,
+          salary: element.salary,
+        });
       });
     });
-  });
 
-  const menuResponses = await inquire.prompt(menuQuestions);
-  if (menuResponses.chosenOption == choicesArray[0]) {
-    viewAllEmployees();
-  } else if (menuResponses.chosenOption == choicesArray[1]) {
-    addEmployee();
-  } else if (menuResponses.chosenOption == choicesArray[2]) {
-    viewAllRoles();
-  } else if (menuResponses.chosenOption == choicesArray[3]) {
-    addRole();
-  } else if (menuResponses.chosenOption == choicesArray[4]) {
-    viewAllDepartments();
-  } else if (menuResponses.chosenOption == choicesArray[5]) {
-    addDepartment();
-  } else {
-    return;
-  }
+    db.query("SELECT * FROM employee", (err, results) => {
+      results.forEach((element) => {
+        allManagers.push({
+          value: element.id,
+          name: element.first_name + " " + element.last_name,
+        });
+      });
+    });
+
+    const menuResponses = await inquire.prompt(menuQuestions);
+    if (menuResponses.chosenOption == choicesArray[0]) {
+      await viewAllEmployees();
+    } else if (menuResponses.chosenOption == choicesArray[1]) {
+      await addEmployee();
+    } else if (menuResponses.chosenOption == choicesArray[2]) {
+      await updateEmployeeRole();
+    } else if (menuResponses.chosenOption == choicesArray[3]) {
+      await viewAllRoles();
+    } else if (menuResponses.chosenOption == choicesArray[4]) {
+      await addRole();
+    } else if (menuResponses.chosenOption == choicesArray[5]) {
+      await viewAllDepartments();
+    } else if (menuResponses.chosenOption == choicesArray[6]) {
+      await addDepartment();
+    } else {
+      process.exit();
+    }
+    
 }
 
-function viewAllEmployees() {
+async function viewAllEmployees() {
   var employees = [];
   db.query("SELECT * from employee", (err, results) => {
     results.forEach((element) => {
@@ -145,64 +150,93 @@ function viewAllEmployees() {
       element.salary = employeeRole[0].salary;
       element.department = employeeDepartment[0].name;
       element.manager =
-      employeeManager[0] == undefined
+        employeeManager[0] == undefined
           ? null
           : employeeManager[0].first_name + " " + employeeManager[0].last_name;
-          employees.push(element)
-          delete element.role_id;
-          delete element.manager_id;
+      employees.push(element);
+      delete element.role_id;
+      delete element.manager_id;
     });
     console.table(employees);
+    return employees
   });
 }
 async function addEmployee() {
   const employeeResponses = await inquire.prompt(addEmployeeQuestions);
 
-  console.log(employeeResponses);
-
   db.query(
     `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${employeeResponses.first_name}','${employeeResponses.last_name}','${employeeResponses.role_id}','${employeeResponses.manager_id}')`
   );
 }
-function updateEmployeeRole() {}
+async function updateEmployeeRole() {
+  var allEmployeeNames = [];
+  const employeeToBeUpdatedQuestions = [
+    {
+      type: "list",
+      name: "employeeToBeUpdated",
+      message: "Which employee to update?",
+      choices: allEmployeeNames,
+    },
+  ];
+  const roleToBeAddedQuestions = [
+    {
+      type: "list",
+      name: "roleToBeAdded",
+      message: "Which role would you like to give to the employee?",
+      choices: allRoles,
+    },
+  ];
+  db.query(`SELECT * FROM employee`, async (err, results) => {
+    results.forEach((element) => {
+      var full_name = element.first_name + " " + element.last_name;
+      var employeeID = element.id;
 
-function viewAllRoles() {
+      allEmployeeNames.push({ value: employeeID, name: full_name });
+    });
+    const employeeToBeUpdated = await inquire.prompt(
+      employeeToBeUpdatedQuestions
+    );
+    const roleToBeAdded = await inquire.prompt(roleToBeAddedQuestions);
+
+    db.query(
+      `UPDATE employee SET role_id=${roleToBeAdded.roleToBeAdded} WHERE id=${employeeToBeUpdated.employeeToBeUpdated}`
+    );
+  });
+}
+
+async function viewAllRoles() {
   db.query("SELECT * from role", (err, results) => {
-    results.forEach((element)=>{
-
+    results.forEach((element) => {
       var roleDepartment = allDepartments.filter(function (data) {
         return data.value == element.department_id;
       });
-      element.department = roleDepartment[0].name
-      delete element.department_id
-    })
+      element.department = roleDepartment[0].name;
+      delete element.department_id;
+    });
     console.table(results);
+    return results
   });
 }
 async function addRole() {
   const rolesResponses = await inquire.prompt(addRoleQuestions);
-  console.log(rolesResponses);
 
   db.query(
     `INSERT INTO role (title, salary, department_id) VALUES ('${rolesResponses.name}', '${rolesResponses.salary}','${rolesResponses.department_id}')`
   );
 }
-function viewAllDepartments() {
+async function viewAllDepartments() {
   db.query("SELECT * from department", (err, results) => {
     console.table(results);
+    
   });
 }
 async function addDepartment() {
   const departmentReponses = await inquire.prompt(addDepartmentQuestions);
 
-  console.log(departmentReponses);
-
   db.query(
     `INSERT INTO department(name) VALUES ('${departmentReponses.name}')`
   );
 }
-
-
 
 app.use((req, res) => {
   res.status(404).end();
