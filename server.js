@@ -6,6 +6,8 @@ const express = require("express");
 const PORT = process.env.PORT || 3001;
 const app = express();
 
+
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
@@ -27,9 +29,22 @@ const choicesArray = [
   "Add role",
   "View all departments",
   "Add department",
+  "Update employee managers",
+  "View employees by manager",
+  "View employees by department",
+  "Delete departments, roles, and employees",
+  "View the total utilized budget of a department",
   "Exit",
 ];
+// Update employee managers.
 
+// View employees by manager.
+
+// View employees by department.
+
+// Delete departments, roles, and employees.
+
+// View the total utilized budget of a department—in other words, the combined salaries of all employees in that department.
 const addDepartmentQuestions = [
   {
     type: "input",
@@ -69,7 +84,7 @@ const addEmployeeQuestions = [
   {
     type: "list",
     name: "manager_id",
-    message: "Who's employee's manager",
+    message: "Who's employee's manager?",
     choices: allManagers,
   },
 ];
@@ -111,7 +126,10 @@ async function init() {
       });
     });
 
+    
+
     const menuResponses = await inquire.prompt(menuQuestions);
+
     if (menuResponses.chosenOption == choicesArray[0]) {
       await viewAllEmployees();
     } else if (menuResponses.chosenOption == choicesArray[1]) {
@@ -129,11 +147,14 @@ async function init() {
     } else {
       process.exit();
     }
-    
+    //while loop with promise or delay in view functions
+    init();
 }
 
 async function viewAllEmployees() {
+  return new Promise((resolve, reject)=>{
   var employees = [];
+  
   db.query("SELECT * from employee", (err, results) => {
     results.forEach((element) => {
       var employeeRole = allRoles.filter(function (data) {
@@ -157,8 +178,15 @@ async function viewAllEmployees() {
       delete element.role_id;
       delete element.manager_id;
     });
+    console.log("\n ")
     console.table(employees);
-    return employees
+
+      if (true) {
+         resolve(employees);     
+      } else {
+         reject()
+      }
+   });
   });
 }
 async function addEmployee() {
@@ -169,6 +197,7 @@ async function addEmployee() {
   );
 }
 async function updateEmployeeRole() {
+  return new Promise((resolve, reject)=>{
   var allEmployeeNames = [];
   const employeeToBeUpdatedQuestions = [
     {
@@ -201,22 +230,37 @@ async function updateEmployeeRole() {
     db.query(
       `UPDATE employee SET role_id=${roleToBeAdded.roleToBeAdded} WHERE id=${employeeToBeUpdated.employeeToBeUpdated}`
     );
+    if(true){
+      resolve(true)
+    }else{
+      reject()
+    }
+  });
   });
 }
 
 async function viewAllRoles() {
-  db.query("SELECT * from role", (err, results) => {
-    results.forEach((element) => {
-      var roleDepartment = allDepartments.filter(function (data) {
-        return data.value == element.department_id;
+  return new Promise((resolve, reject)=>{
+    db.query("SELECT * from role", (err, results) => {
+      results.forEach((element) => {
+        var roleDepartment = allDepartments.filter(function (data) {
+          return data.value == element.department_id;
+        });
+        element.department = roleDepartment[0].name;
+        delete element.department_id;
       });
-      element.department = roleDepartment[0].name;
-      delete element.department_id;
+      console.log("\n ")
+      console.table(results);
+      console.log("\n ")
+      
+      if (true) {
+         resolve(results);     
+      } else {
+         reject()
+      }
     });
-    console.table(results);
-    return results
-  });
-}
+    });
+  }
 async function addRole() {
   const rolesResponses = await inquire.prompt(addRoleQuestions);
 
@@ -225,10 +269,19 @@ async function addRole() {
   );
 }
 async function viewAllDepartments() {
+  return new Promise((resolve, reject)=>{
   db.query("SELECT * from department", (err, results) => {
+    console.log("\n ")
     console.table(results);
+    console.log("\n ")
     
+    if (true) {
+       resolve(results);     
+    } else {
+       reject()
+    }
   });
+ });
 }
 async function addDepartment() {
   const departmentReponses = await inquire.prompt(addDepartmentQuestions);
