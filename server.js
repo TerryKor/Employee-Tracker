@@ -6,8 +6,6 @@ const express = require("express");
 const PORT = process.env.PORT || 3001;
 const app = express();
 
-
-
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
@@ -32,7 +30,9 @@ const choicesArray = [
   "Update employee managers",
   "View employees by manager",
   "View employees by department",
-  "Delete departments, roles, and employees",
+  "Delete departments",
+  "Delete role",
+  "Delete employee",
   "View the total utilized budget of a department",
   "Exit",
 ];
@@ -97,96 +97,133 @@ const menuQuestions = [
     choices: choicesArray,
   },
 ];
+const deleteEmployeeQuestion = [
+  {
+    type: "list",
+    name: "chosenOption",
+    message: "Which employee would you like to delete?",
+    choices: allManagers,
+  },
+];
+const deleteRoleQuestion = [
+  {
+    type: "list",
+    name: "chosenOption",
+    message: "Which role would you like to delete?",
+    choices: allRoles,
+  },
+];
+const deleteDepartmentQuestion = [
+  {
+    type: "list",
+    name: "chosenOption",
+    message: "Which department would you like to delete?",
+    choices: allDepartments,
+  },
+];
 
 async function init() {
-  
-    db.query("SELECT * FROM department", function (err, results) {
-      results.forEach((element) => {
-        allDepartments.push({ value: element.id, name: element.name });
+  db.query("SELECT * FROM department", function (err, results) {
+    results.forEach((element) => {
+      allDepartments.push({ value: element.id, name: element.name });
+    });
+  });
+
+  db.query("SELECT * FROM role", function (err, results) {
+    results.forEach((element) => {
+      allRoles.push({
+        value: element.id,
+        name: element.title,
+        department_id: element.department_id,
+        salary: element.salary,
       });
     });
+  });
 
-    db.query("SELECT * FROM role", function (err, results) {
-      results.forEach((element) => {
-        allRoles.push({
-          value: element.id,
-          name: element.title,
-          department_id: element.department_id,
-          salary: element.salary,
-        });
+  db.query("SELECT * FROM employee", (err, results) => {
+    results.forEach((element) => {
+      allManagers.push({
+        value: element.id,
+        name: element.first_name + " " + element.last_name,
       });
     });
+  });
 
-    db.query("SELECT * FROM employee", (err, results) => {
-      results.forEach((element) => {
-        allManagers.push({
-          value: element.id,
-          name: element.first_name + " " + element.last_name,
-        });
-      });
-    });
+  const menuResponses = await inquire.prompt(menuQuestions);
 
-    
-
-    const menuResponses = await inquire.prompt(menuQuestions);
-
-    if (menuResponses.chosenOption == choicesArray[0]) {
-      await viewAllEmployees();
-    } else if (menuResponses.chosenOption == choicesArray[1]) {
-      await addEmployee();
-    } else if (menuResponses.chosenOption == choicesArray[2]) {
-      await updateEmployeeRole();
-    } else if (menuResponses.chosenOption == choicesArray[3]) {
-      await viewAllRoles();
-    } else if (menuResponses.chosenOption == choicesArray[4]) {
-      await addRole();
-    } else if (menuResponses.chosenOption == choicesArray[5]) {
-      await viewAllDepartments();
-    } else if (menuResponses.chosenOption == choicesArray[6]) {
-      await addDepartment();
-    } else {
-      process.exit();
-    }
-    //while loop with promise or delay in view functions
-    init();
+  if (menuResponses.chosenOption == choicesArray[0]) {
+    await viewAllEmployees();
+  } else if (menuResponses.chosenOption == choicesArray[1]) {
+    await addEmployee();
+  } else if (menuResponses.chosenOption == choicesArray[2]) {
+    await updateEmployeeRole();
+  } else if (menuResponses.chosenOption == choicesArray[3]) {
+    await viewAllRoles();
+  } else if (menuResponses.chosenOption == choicesArray[4]) {
+    await addRole();
+  } else if (menuResponses.chosenOption == choicesArray[5]) {
+    await viewAllDepartments();
+  } else if (menuResponses.chosenOption == choicesArray[6]) {
+    await addDepartment();
+  } else if (menuResponses.chosenOption == choicesArray[7]) {
+    await updateEmployeesManager();
+  } else if (menuResponses.chosenOption == choicesArray[8]) {
+    await viewEmployeesBymanager();
+  } else if (menuResponses.chosenOption == choicesArray[9]) {
+    await viewEmployeesByDepartment();
+  } else if (menuResponses.chosenOption == choicesArray[10]) {
+    await deleteDepartment();
+  } else if (menuResponses.chosenOption == choicesArray[11]) {
+    await deleteRole();
+  } else if (menuResponses.chosenOption == choicesArray[12]) {
+    await deleteEmployee();
+  } else if (menuResponses.chosenOption == choicesArray[13]) {
+    await viewTotalBudget();
+  } else {
+    process.exit();
+  }
+  //while loop with promise or delay in view functions
+  init();
 }
 
 async function viewAllEmployees() {
-  return new Promise((resolve, reject)=>{
-  var employees = [];
-  
-  db.query("SELECT * from employee", (err, results) => {
-    results.forEach((element) => {
-      var employeeRole = allRoles.filter(function (data) {
-        return data.value == element.role_id;
-      });
-      var employeeDepartment = allDepartments.filter(function (data) {
-        return data.value == employeeRole[0].department_id;
-      });
-      var employeeManager = results.filter(function (data) {
-        return data.id == element.manager_id;
-      });
+  return new Promise((resolve, reject) => {
+    var employees = [];
 
-      element.title = employeeRole[0].name;
-      element.salary = employeeRole[0].salary;
-      element.department = employeeDepartment[0].name;
-      element.manager =
-        employeeManager[0] == undefined
-          ? null
-          : employeeManager[0].first_name + " " + employeeManager[0].last_name;
-      employees.push(element);
-      delete element.role_id;
-      delete element.manager_id;
-    });
-    console.log("\n ")
-    console.table(employees);
+    db.query("SELECT * from employee", (err, results) => {
+      results.forEach((element) => {
+        var employeeRole = allRoles.filter(function (data) {
+          return data.value == element.role_id;
+        });
+        var employeeDepartment = allDepartments.filter(function (data) {
+          return data.value == employeeRole[0].department_id;
+        });
+        var employeeManager = results.filter(function (data) {
+          return data.id == element.manager_id;
+        });
+
+        element.title = employeeRole[0].name;
+        element.salary = employeeRole[0].salary;
+        element.department = employeeDepartment[0].name;
+        element.manager =
+          employeeManager[0] == undefined
+            ? null
+            : employeeManager[0].first_name +
+              " " +
+              employeeManager[0].last_name;
+        employees.push(element);
+        delete element.role_id;
+        delete element.manager_id;
+      });
+      console.log("\n ");
+      console.table(employees);
 
       if (true) {
-         resolve(employees);     
+        resolve(employees);
       } else {
-         reject()
+        reject();
       }
-   });
+    });
   });
 }
 async function addEmployee() {
@@ -197,50 +234,50 @@ async function addEmployee() {
   );
 }
 async function updateEmployeeRole() {
-  return new Promise((resolve, reject)=>{
-  var allEmployeeNames = [];
-  const employeeToBeUpdatedQuestions = [
-    {
-      type: "list",
-      name: "employeeToBeUpdated",
-      message: "Which employee to update?",
-      choices: allEmployeeNames,
-    },
-  ];
-  const roleToBeAddedQuestions = [
-    {
-      type: "list",
-      name: "roleToBeAdded",
-      message: "Which role would you like to give to the employee?",
-      choices: allRoles,
-    },
-  ];
-  db.query(`SELECT * FROM employee`, async (err, results) => {
-    results.forEach((element) => {
-      var full_name = element.first_name + " " + element.last_name;
-      var employeeID = element.id;
+  return new Promise((resolve, reject) => {
+    var allEmployeeNames = [];
+    const employeeToBeUpdatedQuestions = [
+      {
+        type: "list",
+        name: "employeeToBeUpdated",
+        message: "Which employee to update?",
+        choices: allEmployeeNames,
+      },
+    ];
+    const roleToBeAddedQuestions = [
+      {
+        type: "list",
+        name: "roleToBeAdded",
+        message: "Which role would you like to give to the employee?",
+        choices: allRoles,
+      },
+    ];
+    db.query(`SELECT * FROM employee`, async (err, results) => {
+      results.forEach((element) => {
+        var full_name = element.first_name + " " + element.last_name;
+        var employeeID = element.id;
 
-      allEmployeeNames.push({ value: employeeID, name: full_name });
+        allEmployeeNames.push({ value: employeeID, name: full_name });
+      });
+      const employeeToBeUpdated = await inquire.prompt(
+        employeeToBeUpdatedQuestions
+      );
+      const roleToBeAdded = await inquire.prompt(roleToBeAddedQuestions);
+
+      db.query(
+        `UPDATE employee SET role_id=${roleToBeAdded.roleToBeAdded} WHERE id=${employeeToBeUpdated.employeeToBeUpdated}`
+      );
+      if (true) {
+        resolve(true);
+      } else {
+        reject();
+      }
     });
-    const employeeToBeUpdated = await inquire.prompt(
-      employeeToBeUpdatedQuestions
-    );
-    const roleToBeAdded = await inquire.prompt(roleToBeAddedQuestions);
-
-    db.query(
-      `UPDATE employee SET role_id=${roleToBeAdded.roleToBeAdded} WHERE id=${employeeToBeUpdated.employeeToBeUpdated}`
-    );
-    if(true){
-      resolve(true)
-    }else{
-      reject()
-    }
-  });
   });
 }
 
 async function viewAllRoles() {
-  return new Promise((resolve, reject)=>{
+  return new Promise((resolve, reject) => {
     db.query("SELECT * from role", (err, results) => {
       results.forEach((element) => {
         var roleDepartment = allDepartments.filter(function (data) {
@@ -249,18 +286,18 @@ async function viewAllRoles() {
         element.department = roleDepartment[0].name;
         delete element.department_id;
       });
-      console.log("\n ")
+      console.log("\n ");
       console.table(results);
-      console.log("\n ")
-      
+      console.log("\n ");
+
       if (true) {
-         resolve(results);     
+        resolve(results);
       } else {
-         reject()
+        reject();
       }
     });
-    });
-  }
+  });
+}
 async function addRole() {
   const rolesResponses = await inquire.prompt(addRoleQuestions);
 
@@ -269,19 +306,19 @@ async function addRole() {
   );
 }
 async function viewAllDepartments() {
-  return new Promise((resolve, reject)=>{
-  db.query("SELECT * from department", (err, results) => {
-    console.log("\n ")
-    console.table(results);
-    console.log("\n ")
-    
-    if (true) {
-       resolve(results);     
-    } else {
-       reject()
-    }
+  return new Promise((resolve, reject) => {
+    db.query("SELECT * from department", (err, results) => {
+      console.log("\n ");
+      console.table(results);
+      console.log("\n ");
+
+      if (true) {
+        resolve(results);
+      } else {
+        reject();
+      }
+    });
   });
- });
 }
 async function addDepartment() {
   const departmentReponses = await inquire.prompt(addDepartmentQuestions);
@@ -289,6 +326,94 @@ async function addDepartment() {
   db.query(
     `INSERT INTO department(name) VALUES ('${departmentReponses.name}')`
   );
+}
+
+async function deleteDepartment() {
+  const departmentToBeDeleted = await inquire.prompt(deleteDepartmentQuestion);
+  return new Promise((resolve, reject) => {
+    console.log(departmentToBeDeleted);
+    db.query(
+      `DELETE FROM department WHERE id=${departmentToBeDeleted.chosenOption}`
+    );
+    console.log("Deleted successfully");
+
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
+}
+async function deleteRole() {
+  const roleToBeDeleted = await inquire.prompt(deleteRoleQuestion);
+  return new Promise((resolve, reject) => {
+    console.log(roleToBeDeleted);
+    db.query(
+      `DELETE FROM role WHERE id=${roleToBeDeleted.chosenOption}`
+    )
+    console.log("Deleted successfully");
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
+}
+async function deleteEmployee() {
+  const employeeToBeDeleted = await inquire.prompt(deleteEmployeeQuestion);
+  return new Promise((resolve, reject) => {
+    console.log(employeeToBeDeleted);
+    db.query(
+      `DELETE FROM employee WHERE id = ${employeeToBeDeleted.chosenOption}`
+    )
+    console.log("Deleted successfully");
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
+}
+async function updateEmployeesManager() {
+  return new Promise((resolve, reject) => {
+    console.log("this feature is coming soon");
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
+}
+
+async function viewEmployeesBymanager() {
+  return new Promise((resolve, reject) => {
+    console.log("this feature is coming soon");
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
+}
+async function viewEmployeesByDepartment() {
+  return new Promise((resolve, reject) => {
+    console.log("this feature is coming soon");
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
+}
+async function viewTotalBudget() {
+  return new Promise((resolve, reject) => {
+    console.log("this feature total budget is coming soon");
+    if (true) {
+      resolve(true);
+    } else {
+      reject();
+    }
+  });
 }
 
 app.use((req, res) => {
