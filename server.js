@@ -122,6 +122,21 @@ const deleteDepartmentQuestion = [
   },
 ];
 
+const updateManagerQuestion = [
+  {
+    type: "list",
+    name: "employeeToBeUpdated",
+    message: "Which employee to update?",
+    choices: allManagers,
+  },
+  {
+    type: "list",
+    name: "updatedManager",
+    message: "Choose new manager",
+    choices: allManagers,
+  },
+];
+
 async function init() {
   db.query("SELECT * FROM department", function (err, results) {
     results.forEach((element) => {
@@ -186,9 +201,9 @@ async function init() {
   init();
 }
 
+var employees = [];
 async function viewAllEmployees() {
   return new Promise((resolve, reject) => {
-    var employees = [];
 
     db.query("SELECT * from employee", (err, results) => {
       results.forEach((element) => {
@@ -275,7 +290,6 @@ async function updateEmployeeRole() {
     });
   });
 }
-
 async function viewAllRoles() {
   return new Promise((resolve, reject) => {
     db.query("SELECT * from role", (err, results) => {
@@ -327,7 +341,6 @@ async function addDepartment() {
     `INSERT INTO department(name) VALUES ('${departmentReponses.name}')`
   );
 }
-
 async function deleteDepartment() {
   const departmentToBeDeleted = await inquire.prompt(deleteDepartmentQuestion);
   return new Promise((resolve, reject) => {
@@ -348,9 +361,7 @@ async function deleteRole() {
   const roleToBeDeleted = await inquire.prompt(deleteRoleQuestion);
   return new Promise((resolve, reject) => {
     console.log(roleToBeDeleted);
-    db.query(
-      `DELETE FROM role WHERE id=${roleToBeDeleted.chosenOption}`
-    )
+    db.query(`DELETE FROM role WHERE id=${roleToBeDeleted.chosenOption}`);
     console.log("Deleted successfully");
     if (true) {
       resolve(true);
@@ -365,7 +376,7 @@ async function deleteEmployee() {
     console.log(employeeToBeDeleted);
     db.query(
       `DELETE FROM employee WHERE id = ${employeeToBeDeleted.chosenOption}`
-    )
+    );
     console.log("Deleted successfully");
     if (true) {
       resolve(true);
@@ -375,8 +386,14 @@ async function deleteEmployee() {
   });
 }
 async function updateEmployeesManager() {
+  const employeesManagerToBeUpdated = await inquire.prompt(
+    updateManagerQuestion
+  );
   return new Promise((resolve, reject) => {
-    console.log("this feature is coming soon");
+    db.query(
+      `UPDATE employee SET manager_id=${employeesManagerToBeUpdated.updatedManager} WHERE id=${employeesManagerToBeUpdated.employeeToBeUpdated}`
+    );
+
     if (true) {
       resolve(true);
     } else {
@@ -385,9 +402,16 @@ async function updateEmployeesManager() {
   });
 }
 
+
 async function viewEmployeesBymanager() {
   return new Promise((resolve, reject) => {
-    console.log("this feature is coming soon");
+    //console.log("this feature is coming soon");
+    var employeeByManager = employees.filter(function (data) {
+      return data.manager_id == 7;
+    });
+
+console.table(employeeByManager);
+
     if (true) {
       resolve(true);
     } else {
