@@ -19,6 +19,7 @@ const db = mysql.createConnection({
 const allDepartments = [];
 const allRoles = [];
 const allManagers = [];
+const allManagers2 = ["None"];
 const choicesArray = [
   "View all employees",
   "Add employee",
@@ -85,7 +86,7 @@ const addEmployeeQuestions = [
     type: "list",
     name: "manager_id",
     message: "Who's employee's manager?",
-    choices: allManagers,
+    choices: allManagers2,
   },
 ];
 
@@ -136,6 +137,22 @@ const updateManagerQuestion = [
     choices: allManagers,
   },
 ];
+const viewManagerQuestion = [
+  {
+    type: "list",
+    name: "managerToBeViewed",
+    message: "Which manager would you like to view?",
+    choices: allManagers,
+  },
+];
+const viewDepartmentQuestion = [
+  {
+    type: "list",
+    name: "departmentToBeViewed",
+    message: "Which department would you like to view?",
+    choices: allDepartments,
+  },
+];
 
 async function init() {
   db.query("SELECT * FROM department", function (err, results) {
@@ -157,13 +174,17 @@ async function init() {
 
   db.query("SELECT * FROM employee", (err, results) => {
     results.forEach((element) => {
+      
       allManagers.push({
+        value: element.id,
+        name: element.first_name + " " + element.last_name,
+      });
+      allManagers2.push({
         value: element.id,
         name: element.first_name + " " + element.last_name,
       });
     });
   });
-
   const menuResponses = await inquire.prompt(menuQuestions);
 
   if (menuResponses.chosenOption == choicesArray[0]) {
@@ -203,8 +224,8 @@ async function init() {
 
 var employees = [];
 async function viewAllEmployees() {
+  employees=[]
   return new Promise((resolve, reject) => {
-
     db.query("SELECT * from employee", (err, results) => {
       results.forEach((element) => {
         var employeeRole = allRoles.filter(function (data) {
@@ -243,9 +264,15 @@ async function viewAllEmployees() {
 }
 async function addEmployee() {
   const employeeResponses = await inquire.prompt(addEmployeeQuestions);
-
+var manager = employeeResponses.manager_id == "None"
+? 'NULL'
+:`${employeeResponses.manager_id}` ;
   db.query(
-    `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${employeeResponses.first_name}','${employeeResponses.last_name}','${employeeResponses.role_id}','${employeeResponses.manager_id}')`
+    `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${
+      employeeResponses.first_name
+    }','${employeeResponses.last_name}','${employeeResponses.role_id}',${
+      manager
+    })`
   );
 }
 async function updateEmployeeRole() {
@@ -344,7 +371,7 @@ async function addDepartment() {
 async function deleteDepartment() {
   const departmentToBeDeleted = await inquire.prompt(deleteDepartmentQuestion);
   return new Promise((resolve, reject) => {
-    console.log(departmentToBeDeleted);
+   
     db.query(
       `DELETE FROM department WHERE id=${departmentToBeDeleted.chosenOption}`
     );
@@ -360,7 +387,7 @@ async function deleteDepartment() {
 async function deleteRole() {
   const roleToBeDeleted = await inquire.prompt(deleteRoleQuestion);
   return new Promise((resolve, reject) => {
-    console.log(roleToBeDeleted);
+  
     db.query(`DELETE FROM role WHERE id=${roleToBeDeleted.chosenOption}`);
     console.log("Deleted successfully");
     if (true) {
@@ -373,7 +400,7 @@ async function deleteRole() {
 async function deleteEmployee() {
   const employeeToBeDeleted = await inquire.prompt(deleteEmployeeQuestion);
   return new Promise((resolve, reject) => {
-    console.log(employeeToBeDeleted);
+    
     db.query(
       `DELETE FROM employee WHERE id = ${employeeToBeDeleted.chosenOption}`
     );
@@ -402,41 +429,128 @@ async function updateEmployeesManager() {
   });
 }
 
-
 async function viewEmployeesBymanager() {
+  var employeeDump = [];
+  const employeeToViewByManager = await inquire.prompt(viewManagerQuestion);
   return new Promise((resolve, reject) => {
-    //console.log("this feature is coming soon");
-    var employeeByManager = employees.filter(function (data) {
-      return data.manager_id == 7;
-    });
+    db.query(
+      `SELECT * from employee WHERE manager_id=${employeeToViewByManager.managerToBeViewed}`,
+      (err, results) => {
+        results.forEach((element) => {
+          var employeeRole = allRoles.filter(function (data) {
+            return data.value == element.role_id;
+          });
+          var employeeDepartment = allDepartments.filter(function (data) {
+            return data.value == employeeRole[0].department_id;
+          });
 
-console.table(employeeByManager);
+          element.title = employeeRole[0].name;
+          element.salary = employeeRole[0].salary;
+          element.department = employeeDepartment[0].name;
 
-    if (true) {
-      resolve(true);
-    } else {
-      reject();
-    }
+          employeeDump.push(element);
+          delete element.role_id;
+          delete element.manager_id;
+        });
+        console.log("\n ");
+        console.table(employeeDump);
+
+        if (true) {
+          resolve(employeeDump);
+        } else {
+          reject();
+        }
+      }
+    );
   });
 }
 async function viewEmployeesByDepartment() {
+  var employeeDump = [];
+  const employeeToViewByDepartment = await inquire.prompt(
+    viewDepartmentQuestion
+  );
   return new Promise((resolve, reject) => {
-    console.log("this feature is coming soon");
-    if (true) {
-      resolve(true);
-    } else {
-      reject();
-    }
+    db.query(`SELECT * from employee`, (err, results) => {
+      results.forEach((element) => {
+        var employeeRole = allRoles.filter(function (data) {
+          return data.value == element.role_id;
+        });
+        if (
+          employeeRole[0].department_id ==
+          employeeToViewByDepartment.departmentToBeViewed
+        ) {
+          var employeeDepartment = allDepartments.filter(function (data) {
+            return data.value == employeeRole[0].department_id;
+          });
+
+          element.title = employeeRole[0].name;
+          element.salary = employeeRole[0].salary;
+          element.department = employeeDepartment[0].name;
+
+          employeeDump.push(element);
+          delete element.role_id;
+          delete element.manager_id;
+        }
+      });
+      console.log("\n ");
+      console.table(employeeDump);
+
+      if (true) {
+        resolve(employeeDump);
+      } else {
+        reject();
+      }
+    });
   });
 }
 async function viewTotalBudget() {
+  var departmentDump = [];
   return new Promise((resolve, reject) => {
-    console.log("this feature total budget is coming soon");
-    if (true) {
-      resolve(true);
-    } else {
-      reject();
-    }
+    db.query(`SELECT * from employee`, (err, results) => {
+      results.forEach((employeeElement) => {
+        var elementForDepartment = {};
+        var employeeRole = allRoles.filter(function (data) {
+          return data.value == employeeElement.role_id;
+        });
+        var employeeDepartment = allDepartments.filter(function (data) {
+          return data.value == employeeRole[0].department_id;
+        });
+        elementForDepartment.department = employeeDepartment[0].name;
+        elementForDepartment.salary = employeeRole[0].salary;
+        departmentDump.push(elementForDepartment);
+      });
+
+      var salaryDump = [];
+      departmentDump.forEach((departmentElement) => {
+        var salary = salaryDump.filter(function (data) {
+          return data.department == departmentElement.department;
+        });
+        if (salary.length == 0) {
+          var element = {};
+          element.department = departmentElement.department;
+          element.salary = departmentElement.salary;
+          salaryDump.push(element);
+        } else {
+          salary.forEach((salaryTile) => {
+            if (salaryTile.department == departmentElement.department) {
+              salaryTile.salary = `${
+                parseFloat(salaryTile.salary) +
+                parseFloat(departmentElement.salary)
+              }`;
+            }
+          });
+        }
+      });
+
+      //console.log("\n ");
+      console.table(salaryDump);
+
+      if (true) {
+        resolve(salaryDump);
+      } else {
+        reject();
+      }
+    });
   });
 }
 
