@@ -2,24 +2,25 @@ const mysql = require("mysql2");
 const inquire = require("inquirer");
 const consoleTable = require("console.table");
 const express = require("express");
-
-const PORT = process.env.PORT || 3001;
+// Initialize an instance of Express.js
 const app = express();
-
+// Express middleware
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-
+// Connect to database
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "sql369369",
   database: "employee_tracker_db",
 });
-
+//Data to be stored into empty arrays from database
 const allDepartments = [];
 const allRoles = [];
 const allManagers = [];
+//Array with "None" to be able to assign null to emploee without manager
 const allManagers2 = ["None"];
+//Array of questions to prompt for user
 const choicesArray = [
   "View all employees",
   "Add employee",
@@ -37,15 +38,7 @@ const choicesArray = [
   "View the total utilized budget of a department",
   "Exit",
 ];
-// Update employee managers.
-
-// View employees by manager.
-
-// View employees by department.
-
-// Delete departments, roles, and employees.
-
-// View the total utilized budget of a department—in other words, the combined salaries of all employees in that department.
+//arrays of questions to prompt for user depending which questions user picks from choicesArray
 const addDepartmentQuestions = [
   {
     type: "input",
@@ -53,7 +46,6 @@ const addDepartmentQuestions = [
     message: "What is the name of the department ?",
   },
 ];
-
 const addRoleQuestions = [
   { type: "input", name: "name", message: "What is role name?" },
   { type: "input", name: "salary", message: "What is role salary?" },
@@ -64,7 +56,6 @@ const addRoleQuestions = [
     choices: allDepartments,
   },
 ];
-
 const addEmployeeQuestions = [
   {
     type: "input",
@@ -89,7 +80,6 @@ const addEmployeeQuestions = [
     choices: allManagers2,
   },
 ];
-
 const menuQuestions = [
   {
     type: "list",
@@ -122,7 +112,6 @@ const deleteDepartmentQuestion = [
     choices: allDepartments,
   },
 ];
-
 const updateManagerQuestion = [
   {
     type: "list",
@@ -153,7 +142,7 @@ const viewDepartmentQuestion = [
     choices: allDepartments,
   },
 ];
-
+// init function to iterrate through database and storing data in empty arrays
 async function init() {
   db.query("SELECT * FROM department", function (err, results) {
     results.forEach((element) => {
@@ -174,7 +163,6 @@ async function init() {
 
   db.query("SELECT * FROM employee", (err, results) => {
     results.forEach((element) => {
-      
       allManagers.push({
         value: element.id,
         name: element.first_name + " " + element.last_name,
@@ -185,8 +173,8 @@ async function init() {
       });
     });
   });
+  //Prompting menu questions to the user and triggering a function depending on user's choise
   const menuResponses = await inquire.prompt(menuQuestions);
-
   if (menuResponses.chosenOption == choicesArray[0]) {
     await viewAllEmployees();
   } else if (menuResponses.chosenOption == choicesArray[1]) {
@@ -218,13 +206,13 @@ async function init() {
   } else {
     process.exit();
   }
-  //while loop with promise or delay in view functions
   init();
 }
 
 var employees = [];
+//Function to iterate through database and return new object of all employees in a table
 async function viewAllEmployees() {
-  employees=[]
+  employees = [];
   return new Promise((resolve, reject) => {
     db.query("SELECT * from employee", (err, results) => {
       results.forEach((element) => {
@@ -262,19 +250,19 @@ async function viewAllEmployees() {
     });
   });
 }
+//Function to add a new employee, if new employee has no manager then null value to be assigned, then inserting new data to database
 async function addEmployee() {
   const employeeResponses = await inquire.prompt(addEmployeeQuestions);
-var manager = employeeResponses.manager_id == "None"
-? 'NULL'
-:`${employeeResponses.manager_id}` ;
+  var manager =
+    employeeResponses.manager_id == "None"
+      ? "NULL"
+      : `${employeeResponses.manager_id}`;
   db.query(
-    `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${
-      employeeResponses.first_name
-    }','${employeeResponses.last_name}','${employeeResponses.role_id}',${
-      manager
-    })`
+    `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${employeeResponses.first_name}','${employeeResponses.last_name}','${employeeResponses.role_id}',${manager})`
   );
 }
+
+//Function to update an employee role which prompts questions to the user and updates database with new object
 async function updateEmployeeRole() {
   return new Promise((resolve, reject) => {
     var allEmployeeNames = [];
@@ -317,6 +305,7 @@ async function updateEmployeeRole() {
     });
   });
 }
+//Function to show all roles which iterates through roles table and prints data in a table
 async function viewAllRoles() {
   return new Promise((resolve, reject) => {
     db.query("SELECT * from role", (err, results) => {
@@ -339,6 +328,7 @@ async function viewAllRoles() {
     });
   });
 }
+//Function to add a role which prompts questions to user then adding new data to database
 async function addRole() {
   const rolesResponses = await inquire.prompt(addRoleQuestions);
 
@@ -346,6 +336,7 @@ async function addRole() {
     `INSERT INTO role (title, salary, department_id) VALUES ('${rolesResponses.name}', '${rolesResponses.salary}','${rolesResponses.department_id}')`
   );
 }
+//Function to iterate through department table and prints all departments in a table
 async function viewAllDepartments() {
   return new Promise((resolve, reject) => {
     db.query("SELECT * from department", (err, results) => {
@@ -361,6 +352,7 @@ async function viewAllDepartments() {
     });
   });
 }
+//Function to add a department which prompts questions to user then prints data in a table
 async function addDepartment() {
   const departmentReponses = await inquire.prompt(addDepartmentQuestions);
 
@@ -368,10 +360,10 @@ async function addDepartment() {
     `INSERT INTO department(name) VALUES ('${departmentReponses.name}')`
   );
 }
+//Function to delete a department which prompts questions to user then removing data from department table
 async function deleteDepartment() {
   const departmentToBeDeleted = await inquire.prompt(deleteDepartmentQuestion);
   return new Promise((resolve, reject) => {
-   
     db.query(
       `DELETE FROM department WHERE id=${departmentToBeDeleted.chosenOption}`
     );
@@ -384,10 +376,10 @@ async function deleteDepartment() {
     }
   });
 }
+//Function to delete a role which prompts questions to user then removing data from role table
 async function deleteRole() {
   const roleToBeDeleted = await inquire.prompt(deleteRoleQuestion);
   return new Promise((resolve, reject) => {
-  
     db.query(`DELETE FROM role WHERE id=${roleToBeDeleted.chosenOption}`);
     console.log("Deleted successfully");
     if (true) {
@@ -397,10 +389,10 @@ async function deleteRole() {
     }
   });
 }
+//Function to delete an employee which prompts questions to user then removing data from employee table
 async function deleteEmployee() {
   const employeeToBeDeleted = await inquire.prompt(deleteEmployeeQuestion);
   return new Promise((resolve, reject) => {
-    
     db.query(
       `DELETE FROM employee WHERE id = ${employeeToBeDeleted.chosenOption}`
     );
@@ -412,6 +404,7 @@ async function deleteEmployee() {
     }
   });
 }
+// Function to update an employee's manager which prompts questions to the user then updates data in employee table by id
 async function updateEmployeesManager() {
   const employeesManagerToBeUpdated = await inquire.prompt(
     updateManagerQuestion
@@ -428,7 +421,7 @@ async function updateEmployeesManager() {
     }
   });
 }
-
+// Function to view an employee by manager which prompts questions to the user then iterates though database and prints results in a table
 async function viewEmployeesBymanager() {
   var employeeDump = [];
   const employeeToViewByManager = await inquire.prompt(viewManagerQuestion);
@@ -464,6 +457,7 @@ async function viewEmployeesBymanager() {
     );
   });
 }
+// Function to view an employee by department which prompts questions to the user then iterates though database and prints results in a table
 async function viewEmployeesByDepartment() {
   var employeeDump = [];
   const employeeToViewByDepartment = await inquire.prompt(
@@ -503,6 +497,7 @@ async function viewEmployeesByDepartment() {
     });
   });
 }
+// Function to view total budget by department which iterate through database then pushes data into emptly array then prints array in a table
 async function viewTotalBudget() {
   var departmentDump = [];
   return new Promise((resolve, reject) => {
@@ -542,7 +537,7 @@ async function viewTotalBudget() {
         }
       });
 
-      //console.log("\n ");
+      console.log("\n ");
       console.table(salaryDump);
 
       if (true) {
@@ -553,9 +548,8 @@ async function viewTotalBudget() {
     });
   });
 }
-
 app.use((req, res) => {
   res.status(404).end();
 });
-
+//invoking init function
 init();
