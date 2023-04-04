@@ -15,9 +15,9 @@ const db = mysql.createConnection({
   database: "employee_tracker_db",
 });
 //Data to be stored into empty arrays from database
-const allDepartments = [];
-const allRoles = [];
-const allManagers = [];
+var allDepartments = [];
+var allRoles = [];
+var allManagers = [];
 //Array with "None" to be able to assign null to emploee without manager
 const allManagers2 = ["None"];
 //Array of questions to prompt for user
@@ -145,25 +145,36 @@ const viewDepartmentQuestion = [
 // init function to iterrate through database and storing data in empty arrays
 async function init() {
   db.query("SELECT * FROM department", function (err, results) {
+    var allDepartmentsDump = [];
     results.forEach((element) => {
-      allDepartments.push({ value: element.id, name: element.name });
+      allDepartmentsDump.push({ value: element.id, name: element.name });
     });
+    if (allDepartmentsDump.length != allDepartments.length) {
+      allDepartments = allDepartmentsDump;
+    }
   });
 
   db.query("SELECT * FROM role", function (err, results) {
+    var allRolesDump = [];
+
     results.forEach((element) => {
-      allRoles.push({
+      allRolesDump.push({
         value: element.id,
         name: element.title,
         department_id: element.department_id,
         salary: element.salary,
       });
     });
+    if (allRolesDump.length != allRoles.length) {
+      allRoles = allRolesDump;
+    }
   });
 
   db.query("SELECT * FROM employee", (err, results) => {
+    var allManagersDump = [];
+
     results.forEach((element) => {
-      allManagers.push({
+      allManagersDump.push({
         value: element.id,
         name: element.first_name + " " + element.last_name,
       });
@@ -172,6 +183,9 @@ async function init() {
         name: element.first_name + " " + element.last_name,
       });
     });
+    if (allManagersDump.length != allManagers.length) {
+      allManagers = allManagersDump;
+    }
   });
   //Prompting menu questions to the user and triggering a function depending on user's choise
   const menuResponses = await inquire.prompt(menuQuestions);
@@ -216,19 +230,26 @@ async function viewAllEmployees() {
   return new Promise((resolve, reject) => {
     db.query("SELECT * from employee", (err, results) => {
       results.forEach((element) => {
+       // console.log(allRoles)
         var employeeRole = allRoles.filter(function (data) {
           return data.value == element.role_id;
         });
         var employeeDepartment = allDepartments.filter(function (data) {
-          return data.value == employeeRole[0].department_id;
-        });
-        var employeeManager = results.filter(function (data) {
-          return data.id == element.manager_id;
-        });
-
-        element.title = employeeRole[0].name;
-        element.salary = employeeRole[0].salary;
-        element.department = employeeDepartment[0].name;
+          return (
+            data.value ==
+            (employeeRole[0] == undefined
+              ? "None"
+              : employeeRole[0].department_id)
+              );
+            });
+            var employeeManager = results.filter(function (data) {
+              return data.id == element.manager_id;
+            });
+            
+            
+            element.title = employeeRole[0]==undefined ? "NULL":employeeRole[0].name;
+            element.salary = employeeRole[0]==undefined ? "NULL":employeeRole[0].salary;
+            element.department = employeeDepartment[0] == undefined ? "Null":employeeDepartment[0].name;
         element.manager =
           employeeManager[0] == undefined
             ? null
@@ -252,6 +273,7 @@ async function viewAllEmployees() {
 }
 //Function to add a new employee, if new employee has no manager then null value to be assigned, then inserting new data to database
 async function addEmployee() {
+  addEmployeeQuestions[2].choices = allRoles;
   const employeeResponses = await inquire.prompt(addEmployeeQuestions);
   var manager =
     employeeResponses.manager_id == "None"
@@ -313,7 +335,7 @@ async function viewAllRoles() {
         var roleDepartment = allDepartments.filter(function (data) {
           return data.value == element.department_id;
         });
-        element.department = roleDepartment[0].name;
+        element.department = roleDepartment[0] == undefined ?"NULL": roleDepartment[0].name;
         delete element.department_id;
       });
       console.log("\n ");
@@ -330,6 +352,7 @@ async function viewAllRoles() {
 }
 //Function to add a role which prompts questions to user then adding new data to database
 async function addRole() {
+  addRoleQuestions[2].choices = allDepartments
   const rolesResponses = await inquire.prompt(addRoleQuestions);
 
   db.query(
@@ -362,11 +385,14 @@ async function addDepartment() {
 }
 //Function to delete a department which prompts questions to user then removing data from department table
 async function deleteDepartment() {
+  deleteDepartmentQuestion[0].choices = allDepartments;
   const departmentToBeDeleted = await inquire.prompt(deleteDepartmentQuestion);
   return new Promise((resolve, reject) => {
     db.query(
       `DELETE FROM department WHERE id=${departmentToBeDeleted.chosenOption}`
     );
+
+    allDepartments = [];
     console.log("Deleted successfully");
 
     if (true) {
@@ -378,9 +404,11 @@ async function deleteDepartment() {
 }
 //Function to delete a role which prompts questions to user then removing data from role table
 async function deleteRole() {
+  deleteRoleQuestion[0].choices = allRoles;
   const roleToBeDeleted = await inquire.prompt(deleteRoleQuestion);
   return new Promise((resolve, reject) => {
     db.query(`DELETE FROM role WHERE id=${roleToBeDeleted.chosenOption}`);
+    allRoles = [];
     console.log("Deleted successfully");
     if (true) {
       resolve(true);
@@ -391,12 +419,15 @@ async function deleteRole() {
 }
 //Function to delete an employee which prompts questions to user then removing data from employee table
 async function deleteEmployee() {
+  deleteEmployeeQuestion[0].choices = allManagers;
+
   const employeeToBeDeleted = await inquire.prompt(deleteEmployeeQuestion);
   return new Promise((resolve, reject) => {
     db.query(
       `DELETE FROM employee WHERE id = ${employeeToBeDeleted.chosenOption}`
     );
     console.log("Deleted successfully");
+    allManagers = [];
     if (true) {
       resolve(true);
     } else {
@@ -406,6 +437,8 @@ async function deleteEmployee() {
 }
 // Function to update an employee's manager which prompts questions to the user then updates data in employee table by id
 async function updateEmployeesManager() {
+  updateManagerQuestion[0].choices = allManagers
+  updateManagerQuestion[1].choices = allManagers
   const employeesManagerToBeUpdated = await inquire.prompt(
     updateManagerQuestion
   );
@@ -424,6 +457,7 @@ async function updateEmployeesManager() {
 // Function to view an employee by manager which prompts questions to the user then iterates though database and prints results in a table
 async function viewEmployeesBymanager() {
   var employeeDump = [];
+  viewManagerQuestion[0].choices = allManagers
   const employeeToViewByManager = await inquire.prompt(viewManagerQuestion);
   return new Promise((resolve, reject) => {
     db.query(
@@ -460,6 +494,7 @@ async function viewEmployeesBymanager() {
 // Function to view an employee by department which prompts questions to the user then iterates though database and prints results in a table
 async function viewEmployeesByDepartment() {
   var employeeDump = [];
+  viewDepartmentQuestion[0].choices = allDepartments
   const employeeToViewByDepartment = await inquire.prompt(
     viewDepartmentQuestion
   );
@@ -510,8 +545,8 @@ async function viewTotalBudget() {
         var employeeDepartment = allDepartments.filter(function (data) {
           return data.value == employeeRole[0].department_id;
         });
-        elementForDepartment.department = employeeDepartment[0].name;
-        elementForDepartment.salary = employeeRole[0].salary;
+        elementForDepartment.department = employeeDepartment[0]==undefined?"Null":employeeDepartment[0].name;
+        elementForDepartment.salary = employeeRole[0]==undefined?"Null":employeeRole[0].salary;
         departmentDump.push(elementForDepartment);
       });
 
